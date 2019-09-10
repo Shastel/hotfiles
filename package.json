@@ -1,0 +1,28 @@
+{
+  "name": "hotfiles",
+  "version": "0.0.6",
+  "description": "",
+  "main": "index.js",
+  "bin": "cli.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shastel/hotfiles.git"
+  },
+  "author": "max@shas.tel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Shastel/hotfiles/issues"
+  },
+  "homepage": "https://github.com/Shastel/hotfiles#readme",
+  "dependencies": {
+    "command-line-args": "^5.1.1",
+    "nodegit": "^0.25.1",
+    "ramda": "^0.26.1"
+  },
+  "devDependencies": {
+    "eslint": "^6.1.0"
+  }
+}
