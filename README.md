@@ -32,11 +32,18 @@ npx hotfiles --repo=path_to_your_cloned_repo
 `--limit, -l` - Number of commits to analyze (Infinity by default)  
 `--message, -m` - Filter for commit message (will be treated as a regex)  
 `--ext, -e` - List of file extensions to check
+`--json, -j` - Path to output file
 
 
-### Example
+### Examples
 
 ```sh
 hotfiles --repo='./my-awesome-project' --path='src' --limit=100 --message='fix:' --ext=.js --ext=.rb
 ```
 This call will scan `last 100` commits in `my-awesome-project` under `src` path where commit message contains `fix:` and a report will contain only files with extensions `.js` and `.rb`.
+
+
+```sh
+hotfiles --repo='./my-awesome-project' --limit=100 --ext=.ts --ext=.tsx --json=./output.json
+```
+This call will scan `last 100` commits in `my-awesome-project`, report will contain only files with extensions `.ts` and `.tsx` and will be saved as json to `./output.josn`
