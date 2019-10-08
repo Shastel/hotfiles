@@ -37,6 +37,6 @@ npx hotfiles --repo=path_to_your_cloned_repo
 ### Example
 
 ```sh
-hotfiles --repo='./my-awersome-project' --path='src' --limit=100 --message='fix:' --ext=.js --ext=.rb
+hotfiles --repo='./my-awesome-project' --path='src' --limit=100 --message='fix:' --ext=.js --ext=.rb
 ```
 This call will scan `last 100` commits in `my-awesome-project` under `src` path where commit message contains `fix:` and a report will contain only files with extensions `.js` and `.rb`
