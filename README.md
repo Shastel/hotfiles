@@ -31,7 +31,7 @@ npx hotfiles --repo=path_to_your_cloned_repo
 `--path, -p` - Specific path inside of your project  
 `--limit, -l` - Number of commits to analyze (Infinity by default)  
 `--message, -m` - Filter for commit message (will be treated as a regex)  
-`--ext, -e` - List of file extensions to check
+`--ext, -e` - List of file extensions to check  
 `--json, -j` - Path to output file
 
 
