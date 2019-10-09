@@ -46,4 +46,4 @@ This call will scan `last 100` commits in `my-awesome-project` under `src` path 
 ```sh
 hotfiles --repo='./my-awesome-project' --limit=100 --ext=.ts --ext=.tsx --json=./output.json
 ```
-This call will scan `last 100` commits in `my-awesome-project`, report will contain only files with extensions `.ts` and `.tsx` and will be saved as json to `./output.josn`
+This call will scan `last 100` commits in `my-awesome-project`, report will contain only files with extensions `.ts` and `.tsx` and will be saved as json to `./output.json`
