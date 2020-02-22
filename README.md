@@ -1,8 +1,10 @@
 # HotFiles
 
-A simple tool for commit-based analysis of your codebase.
-
 [![hotfiles](https://circleci.com/gh/Shastel/hotfiles.svg?style=shield)](https://circleci.com/gh/shastel/hotfiles)
+![Depenndencies](https://img.shields.io/david/shastel/hotfiles)
+[![npm](https://img.shields.io/npm/v/hotfiles)](https://www.npmjs.com/package/hotfiles)
+
+A simple tool for commit-based analysis of your codebase.
 
 ## Motivation
 
