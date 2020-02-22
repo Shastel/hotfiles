@@ -12,6 +12,7 @@ const { path, repo, limit, message, ext = [], ignoreExt, json } = commandLineArg
   { name: 'path', type: String, alias: 'p', defaultOption: '/' },
   { name: 'message', type: String, alias: 'm', defaultOption: '' },
   { name: 'ext', type: String, alias: 'e', multiple: true,  },
+  { name: 'ignoreExt', type: String, alias: 'i', multiple: true, },
   { name: 'json', type: String, alias: 'j'  }
 ]);
 
