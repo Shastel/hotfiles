@@ -35,7 +35,7 @@ const { path, repo, limit, message, ext = [], ignoreExt, json } = commandLineArg
     R[fileName] = occurrences;
 
     return R;
-  }, {})
+  }, {});
 
   fs.writeFileSync(json, JSON.stringify(entriesAsObject));
 })();
