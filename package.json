@@ -1,7 +1,7 @@
 {
   "name": "hotfiles",
-  "version": "0.1.0",
-  "description": "",
+  "version": "0.2.0",
+  "description": "Start your next refactoring by knowing where to start",
   "main": "index.js",
   "bin": "cli.js",
   "scripts": {
