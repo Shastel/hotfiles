@@ -2,6 +2,8 @@
 
 A simple tool for commit-based analysis of your codebase.
 
+[![hotfiles](https://circleci.com/gh/Shastel/hotfiles.svg?style=shield)](https://circleci.com/gh/shastel/hotfiles)
+
 ## Motivation
 
 There are tons upon tons of ways to analyze your code but with this simple tool you can map codebase problems to business problems. For example if there are a lot of fixes in file 'a' this file should be refactored or you should write more tests for this file.
