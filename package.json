@@ -20,6 +20,7 @@
   "homepage": "https://github.com/Shastel/hotfiles#readme",
   "dependencies": {
     "command-line-args": "^5.1.1",
+    "latest-version": "^5.1.0",
     "nodegit": "^0.26.4",
     "ramda": "^0.27.0"
   },

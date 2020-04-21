@@ -5,9 +5,12 @@ const fs = require('fs');
 const commandLineArgs = require('command-line-args');
 
 const loadData = require('./lib');
+const {
+  checkAvailableVersion,
+} = require('./lib/utils');
 
 const { path, repo, limit, message, ext = [], ignoreExt, json } = commandLineArgs([
-  { name: 'repo', type: String, alias: 'r', defaultOption: process.cwd, description: 'test' },
+  { name: 'repo', type: String, alias: 'r', description: 'test' },
   { name: 'limit', type: Number, alias: 'l', defaultOption: Infinity },
   { name: 'path', type: String, alias: 'p', defaultOption: '/' },
   { name: 'message', type: String, alias: 'm', defaultOption: '' },
@@ -17,6 +20,8 @@ const { path, repo, limit, message, ext = [], ignoreExt, json } = commandLineArg
 ]);
 
 (async () => {
+  await checkAvailableVersion();
+
   const [ ...entries ] = await loadData({
     repo,
     path,
