@@ -6,8 +6,8 @@ const commandLineArgs = require('command-line-args');
 
 const loadData = require('./lib');
 const {
-  checkAvailableVersion,
-} = require('./lib/utils');
+  printUpdates,
+} = require('./lib/updates');
 
 const { path, repo, limit, message, ext = [], ignoreExt, json } = commandLineArgs([
   { name: 'repo', type: String, alias: 'r', description: 'test' },
@@ -19,9 +19,9 @@ const { path, repo, limit, message, ext = [], ignoreExt, json } = commandLineArg
   { name: 'json', type: String, alias: 'j'  }
 ]);
 
-(async () => {
-  await checkAvailableVersion();
+printUpdates();
 
+(async () => {
   const [ ...entries ] = await loadData({
     repo,
     path,
