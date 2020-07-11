@@ -9,11 +9,12 @@ const {
   printUpdates,
 } = require('./lib/updates');
 
-const { path, repo, limit, message, ext = [], ignoreExt, json } = commandLineArgs([
+const { path, repo, limit, message, ext = [], ignoreExt, json, till } = commandLineArgs([
   { name: 'repo', type: String, alias: 'r', description: 'test' },
-  { name: 'limit', type: Number, alias: 'l', defaultOption: Infinity },
-  { name: 'path', type: String, alias: 'p', defaultOption: '/' },
-  { name: 'message', type: String, alias: 'm', defaultOption: '' },
+  { name: 'limit', type: Number, alias: 'l', defaultValue: Infinity },
+  { name: 'till', type: String, alias: 't', defaultValue: ''},
+  { name: 'path', type: String, alias: 'p', defaultValue: '/' },
+  { name: 'message', type: String, alias: 'm', defaultValue: '' },
   { name: 'ext', type: String, alias: 'e', multiple: true,  },
   { name: 'ignoreExt', type: String, alias: 'i', multiple: true, },
   { name: 'json', type: String, alias: 'j'  }
@@ -26,6 +27,7 @@ printUpdates();
     repo,
     path,
     limit,
+    till,
     message,
     ext,
     ignoreExt,
