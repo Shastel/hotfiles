@@ -20,12 +20,12 @@
   "homepage": "https://github.com/Shastel/hotfiles#readme",
   "dependencies": {
     "command-line-args": "^5.1.1",
-    "nodegit": "^0.26.4",
+    "nodegit": "^0.26.5",
     "ramda": "^0.27.0",
     "update-notifier": "^4.1.0"
   },
   "devDependencies": {
-    "eslint": "^6.5.1",
-    "husky": "^4.2.3"
+    "eslint": "^6.8.0",
+    "husky": "^4.2.5"
   }
 }
