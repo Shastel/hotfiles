@@ -1,49 +1,95 @@
 #!/usr/bin/env node
+'use strict';
 
-const fs = require('fs');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const { analyzeRepository } = require('./lib');
+const pkg = require('./package.json');
 
-const commandLineArgs = require('command-line-args');
+const HELP = `Usage: hotfiles --repo <path> [options]
 
-const loadData = require('./lib');
-const {
-  printUpdates,
-} = require('./lib/updates');
+Options:
+  -r, --repo <path>              Git repository (required)
+  -p, --path <path>              Limit results to a directory
+  -l, --limit <number>           Newest eligible commits to analyze
+  -m, --message <regex>          Filter commit messages
+  -e, --ext <extension>          Include extension (repeatable)
+  -i, --ignoreExt <extension>    Exclude extension (repeatable)
+      --since <date>             Include commits on or after date
+  -t, --till <date>              Deprecated alias for --since
+      --format <text|json>       Output format (default: text)
+  -o, --output <file>            Write output atomically to a file
+  -j, --json <file>              Shorthand for --format json --output <file>
+      --force                    Replace an existing output file
+  -h, --help                     Show help
+  -v, --version                  Show version`;
 
-const { path, repo, limit, message, ext = [], ignoreExt, json, till } = commandLineArgs([
-  { name: 'repo', type: String, alias: 'r', description: 'test' },
-  { name: 'limit', type: Number, alias: 'l', defaultValue: Infinity },
-  { name: 'till', type: String, alias: 't', defaultValue: ''},
-  { name: 'path', type: String, alias: 'p', defaultValue: '/' },
-  { name: 'message', type: String, alias: 'm', defaultValue: '' },
-  { name: 'ext', type: String, alias: 'e', multiple: true,  },
-  { name: 'ignoreExt', type: String, alias: 'i', multiple: true, },
-  { name: 'json', type: String, alias: 'j'  }
-]);
-
-printUpdates();
-
-(async () => {
-  const [ ...entries ] = await loadData({
-    repo,
-    path,
-    limit,
-    till,
-    message,
-    ext,
-    ignoreExt,
-  });
-
-  if (!json) {
-    // eslint-disable-next-line
-    entries.forEach(entry => console.log(entry.join(' => ')));
-    return ;
+function parse(argv) {
+  const valueFlags = new Map([
+    ['-r', 'repo'], ['--repo', 'repo'], ['-p', 'path'], ['--path', 'path'], ['-l', 'limit'], ['--limit', 'limit'],
+    ['-m', 'message'], ['--message', 'message'], ['-e', 'extensions'], ['--ext', 'extensions'],
+    ['-i', 'ignoreExtensions'], ['--ignoreExt', 'ignoreExtensions'], ['--since', 'since'], ['-t', 'till'], ['--till', 'till'],
+    ['--format', 'format'], ['-o', 'output'], ['--output', 'output'], ['-j', 'json'], ['--json', 'json']
+  ]);
+  const result = { extensions: [], ignoreExtensions: [] };
+  for (let i = 0; i < argv.length; i += 1) {
+    let flag = argv[i];
+    let inline;
+    if (flag.startsWith('--') && flag.includes('=')) [flag, inline] = flag.split(/=(.*)/s, 2);
+    if (flag === '--help' || flag === '-h') result.help = true;
+    else if (flag === '--version' || flag === '-v') result.version = true;
+    else if (flag === '--force') result.force = true;
+    else if (valueFlags.has(flag)) {
+      const key = valueFlags.get(flag);
+      const value = inline === undefined ? argv[++i] : inline;
+      if (value === undefined) throw new Error(`${flag} requires a value`);
+      if (Array.isArray(result[key])) result[key].push(value); else result[key] = value;
+    } else throw new Error(`Unknown option: ${flag}`);
   }
+  if (result.till && result.since) throw new Error('--till and --since cannot be used together');
+  if (result.till) result.since = result.till;
+  if (result.json) { result.format = 'json'; result.output = result.json; }
+  result.format ||= 'text';
+  if (!['text', 'json'].includes(result.format)) throw new Error('--format must be text or json');
+  if (result.limit !== undefined) {
+    if (!/^\d+$/.test(result.limit)) throw new Error('--limit must be a non-negative integer');
+    result.limit = Number(result.limit);
+  }
+  return result;
+}
 
-  const entriesAsObject = entries.reduce((R, [ fileName, occurrences ]) => {
-    R[fileName] = occurrences;
+async function writeAtomic(destination, content, force) {
+  const resolved = path.resolve(destination);
+  if (!force) {
+    try { await fs.access(resolved); throw new Error(`Output already exists: ${resolved} (use --force to replace it)`); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  const temporary = `${resolved}.${process.pid}.tmp`;
+  try {
+    await fs.writeFile(temporary, content, { flag: 'wx' });
+    await fs.rename(temporary, resolved);
+  } catch (error) {
+    await fs.unlink(temporary).catch(() => {});
+    throw error;
+  }
+}
 
-    return R;
-  }, {});
+async function main(argv = process.argv.slice(2)) {
+  const args = parse(argv);
+  if (args.help) { process.stdout.write(`${HELP}\n`); return; }
+  if (args.version) { process.stdout.write(`${pkg.version}\n`); return; }
+  if (args.till) process.stderr.write('Warning: --till is deprecated; use --since instead.\n');
+  const results = await analyzeRepository(args);
+  const content = args.format === 'json'
+    ? `${JSON.stringify(results, null, 2)}\n`
+    : results.map(item => `${item.path} => ${item.commits}`).join('\n') + (results.length ? '\n' : '');
+  if (args.output) await writeAtomic(args.output, content, args.force);
+  else process.stdout.write(content);
+}
 
-  fs.writeFileSync(json, JSON.stringify(entriesAsObject));
-})();
+if (require.main === module) main().catch(error => {
+  process.stderr.write(`hotfiles: ${error.message}\n`);
+  process.exitCode = 1;
+});
+
+module.exports = { main, parse };

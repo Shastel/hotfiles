@@ -1,31 +1,27 @@
 {
   "name": "hotfiles",
-  "version": "0.3.0",
-  "description": "Start your next refactoring by knowing where to start",
+  "version": "1.0.0",
+  "description": "Find frequently changed files in Git history",
   "main": "index.js",
-  "bin": "cli.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "default": "./index.js"
+    }
+  },
+  "bin": { "hotfiles": "cli.js" },
+  "files": ["index.js", "index.d.ts", "cli.js", "lib/index.js", "README.md", "LICENSE", "SECURITY.md"],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint --max-warnings=0 --ext=js ./"
+    "lint": "node --check index.js && node --check cli.js && node --check lib/index.js",
+    "test": "node --test",
+    "check:package": "npm pack --dry-run"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Shastel/hotfiles.git"
-  },
+  "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "git+https://github.com/Shastel/hotfiles.git" },
   "author": "max@shas.tel",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/Shastel/hotfiles/issues"
-  },
-  "homepage": "https://github.com/Shastel/hotfiles#readme",
-  "dependencies": {
-    "command-line-args": "^5.1.1",
-    "nodegit": "^0.26.5",
-    "ramda": "^0.27.0",
-    "update-notifier": "^4.1.0"
-  },
-  "devDependencies": {
-    "eslint": "^6.8.0",
-    "husky": "^4.2.5"
-  }
+  "bugs": { "url": "https://github.com/Shastel/hotfiles/issues" },
+  "homepage": "https://github.com/Shastel/hotfiles#readme"
 }

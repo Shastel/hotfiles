@@ -1,57 +1,58 @@
-# HotFiles
+# hotfiles
 
-[![hotfiles](https://circleci.com/gh/Shastel/hotfiles.svg?style=shield)](https://circleci.com/gh/shastel/hotfiles)
-![Depenndencies](https://img.shields.io/david/shastel/hotfiles)
-[![npm](https://img.shields.io/npm/v/hotfiles)](https://www.npmjs.com/package/hotfiles)
+`hotfiles` finds the files touched by the most Git commits. Version 1 is a Node.js 22+ CommonJS library and CLI. It requires the `git` executable on `PATH` and has no runtime npm dependencies.
 
-A simple tool for commit-based analysis of your codebase.
-
-## Motivation
-
-There are tons upon tons of ways to analyze your code but with this simple tool you can map codebase problems to business problems. For example if there are a lot of fixes in file 'a' this file should be refactored or you should write more tests for this file.
-It is pretty useful when you are beginning working with a large codebase, considering refactoring or writing tests, this tool may indicate where to start.
-
-The tool is language agnostic, you can run it against `js`, `ts`, `dart`, `java`, basically against whatever you want.  
-You need just to pass an extension and that it.
-
-## Installation
-
-You should get [nodejs](https://nodejs.org/en/) first.
-
-Then you will be able to install 'hotfiles' globally or you will be able to run the tool with [npx](https://www.npmjs.com/package/npx)
-```sh
-npm i -g hotfiles
-```
-
-## Usage
+## CLI
 
 ```sh
-hotfiles --repo=path_to_your_cloned_repo
+hotfiles --repo ./my-project --path src --limit 100 --message '^fix:' --ext js --ext ts
+hotfiles -r ./my-project --since 2025-01-01 --format json
+hotfiles -r ./my-project --json report.json
 ```
-or
+
+Run `hotfiles --help` for every option. `--output` refuses to overwrite a file unless `--force` is supplied and writes through a temporary file. The legacy `--till/-t` option remains as a deprecated alias for `--since`; `--json/-j <file>` is shorthand for JSON file output.
+
+## Library
+
+```js
+const { analyzeRepository } = require('hotfiles');
+
+const files = await analyzeRepository({
+  repo: '/path/to/repository',
+  path: 'src',
+  limit: 100,
+  since: '2025-01-01T00:00:00Z',
+  message: '^fix:',
+  extensions: ['js', '.ts'],
+  ignoreExtensions: ['test.js']
+});
+```
+
+`repo` is required. History is unlimited by default; `limit: 0` returns `[]`. Extensions are case-insensitive and may include the leading dot. Exclusions override inclusions. Path filters respect directory boundaries.
+
+The promise resolves to a deterministically ordered JSON-compatible array:
+
+```json
+[{ "path": "src/index.js", "commits": 12 }]
+```
+
+Results sort by descending commit count and then ascending path. Each non-merge commit contributes at most one touch per file. Message and inclusive date filters are applied before the newest eligible `limit` commits are chosen. Rename history is attributed to the path at `HEAD`; deleted files are omitted. Copies retain separate histories.
+
+Errors expose stable `code` values: `ERR_HOTFILES_INVALID_OPTIONS`, `ERR_HOTFILES_GIT_NOT_FOUND`, `ERR_HOTFILES_INVALID_REPOSITORY`, and `ERR_HOTFILES_GIT`.
+
+## Migrating from 0.x
+
+- The package now has a working root export and returns `{ path, commits }[]`, not tuple arrays.
+- CLI JSON is an ordered array instead of a filename-keyed object.
+- Library option names are `extensions`, `ignoreExtensions`, and `since`; the CLI retains `--ext`, `--ignoreExt`, and deprecated `--till` compatibility.
+- The system Git executable replaces NodeGit.
+
+## Development
+
 ```sh
-npx hotfiles --repo=path_to_your_cloned_repo
+npm test
+npm run lint
+npm pack --dry-run
 ```
 
-### Available options
-`--repo, -r` - Path to your project (mandatory)  
-`--path, -p` - Specific path inside of your project  
-`--limit, -l` - Number of commits to analyze (Infinity by default)  
-`--message, -m` - Filter for commit message (will be treated as a regex)  
-`--ext, -e` - List of file extensions to check  
-`--ignoreExt, -e` - List of extensions to ignore  
-`--json, -j` - Path to output file
-
-
-### Examples
-
-```sh
-hotfiles --repo='./my-awesome-project' --path='src' --limit=100 --message='fix:' --ext=.js --ext=.rb
-```
-This call will scan `last 100` commits in `my-awesome-project` under `src` path where commit message contains `fix:` and a report will contain only files with extensions `.js` and `.rb`.
-
-
-```sh
-hotfiles --repo='./my-awesome-project' --limit=100 --ext=.ts --ext=.tsx --json=./output.json
-```
-This call will scan `last 100` commits in `my-awesome-project`, report will contain only files with extensions `.ts` and `.tsx` and will be saved as json to `./output.json`
+These commands build and verify a local package candidate. This repository has no npm publishing workflow.
