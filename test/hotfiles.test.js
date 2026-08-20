@@ -14,6 +14,10 @@ function git(repo, ...args) {
   return execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
 }
 
+function counts(results) {
+  return results.map(({ path: filePath, commits }) => ({ path: filePath, commits }));
+}
+
 function fixture(t) {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'hotfiles-'));
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
@@ -33,17 +37,24 @@ test('counts one touch per commit, sorts deterministically, and filters boundari
   f.write('src/a.JS', 'one'); f.write('src2/no.js', 'one'); f.write('src/readme.md', 'one'); f.commit('initial', '2024-01-01T00:00:00Z');
   f.write('src/a.JS', 'two'); f.write('src/readme.md', 'two'); f.commit('fix: both', '2024-02-01T00:00:00Z');
   f.write('src/a.JS', 'three'); f.commit('fix: a', '2024-03-01T00:00:00Z');
-  assert.deepEqual(await analyzeRepository({ repo: f.repo, path: 'src', extensions: ['js', '.md'], ignoreExtensions: ['MD'] }), [
+  const results = await analyzeRepository({ repo: f.repo, path: 'src', extensions: ['js', '.md'], ignoreExtensions: ['MD'] });
+  assert.deepEqual(counts(results), [
     { path: 'src/a.JS', commits: 3 }
   ]);
-  assert.deepEqual(await analyzeRepository({ repo: f.repo, message: '^fix:', limit: 1 }), [{ path: 'src/a.JS', commits: 1 }]);
+  assert.deepEqual(results[0].details.map(detail => ({ date: detail.date, message: detail.message })), [
+    { date: '2024-03-01T00:00:00.000Z', message: 'fix: a' },
+    { date: '2024-02-01T00:00:00.000Z', message: 'fix: both' },
+    { date: '2024-01-01T00:00:00.000Z', message: 'initial' }
+  ]);
+  assert.match(results[0].details[0].hash, /^[0-9a-f]{40}$/);
+  assert.deepEqual(counts(await analyzeRepository({ repo: f.repo, message: '^fix:', limit: 1 })), [{ path: 'src/a.JS', commits: 1 }]);
 });
 
 test('since is inclusive and limit zero is empty', async t => {
   const f = fixture(t);
   f.write('a.txt', 'one'); f.commit('one', '2024-01-01T00:00:00Z');
   f.write('a.txt', 'two'); f.commit('two', '2024-01-02T00:00:00Z');
-  assert.deepEqual(await analyzeRepository({ repo: f.repo, since: '2024-01-02T00:00:00Z' }), [{ path: 'a.txt', commits: 1 }]);
+  assert.deepEqual(counts(await analyzeRepository({ repo: f.repo, since: '2024-01-02T00:00:00Z' })), [{ path: 'a.txt', commits: 1 }]);
   assert.deepEqual(await analyzeRepository({ repo: f.repo, limit: 0 }), []);
 });
 
@@ -56,7 +67,7 @@ test('follows rename chains, excludes deleted files, and treats copies independe
   fs.unlinkSync(path.join(f.repo, 'gone.txt')); f.commit('delete gone', '2024-01-05T00:00:00Z');
   fs.copyFileSync(path.join(f.repo, 'current.txt'), path.join(f.repo, 'copy.txt')); f.commit('copy', '2024-01-06T00:00:00Z');
   f.write('copy.txt', 'copy changed'); f.commit('change copy', '2024-01-07T00:00:00Z');
-  assert.deepEqual(await analyzeRepository({ repo: f.repo }), [
+  assert.deepEqual(counts(await analyzeRepository({ repo: f.repo })), [
     { path: 'current.txt', commits: 3 }, { path: 'copy.txt', commits: 2 }
   ]);
 });
@@ -71,7 +82,7 @@ test('supports empty repositories and filenames containing newlines', async t =>
   const f = fixture(t);
   assert.deepEqual(await analyzeRepository({ repo: f.repo }), []);
   f.write('odd\nname.txt', 'one'); f.commit('odd', '2024-01-01T00:00:00Z');
-  assert.deepEqual(await analyzeRepository({ repo: f.repo }), [{ path: 'odd\nname.txt', commits: 1 }]);
+  assert.deepEqual(counts(await analyzeRepository({ repo: f.repo })), [{ path: 'odd\nname.txt', commits: 1 }]);
 });
 
 test('walks all branches reachable from HEAD while excluding merge commits', async t => {
@@ -84,7 +95,7 @@ test('walks all branches reachable from HEAD while excluding merge commits', asy
   execFileSync('git', ['-C', f.repo, 'merge', '--no-ff', '-q', 'feature', '-m', 'merge'], {
     env: { ...process.env, GIT_AUTHOR_DATE: '2024-01-04T00:00:00Z', GIT_COMMITTER_DATE: '2024-01-04T00:00:00Z' }
   });
-  assert.deepEqual(await analyzeRepository({ repo: f.repo }), [
+  assert.deepEqual(counts(await analyzeRepository({ repo: f.repo })), [
     { path: 'a.txt', commits: 2 }, { path: 'b.txt', commits: 2 }
   ]);
 });
@@ -120,7 +131,7 @@ test('analyzes available history in a shallow clone', async t => {
   const clone = fs.mkdtempSync(path.join(os.tmpdir(), 'hotfiles-shallow-'));
   t.after(() => fs.rmSync(clone, { recursive: true, force: true }));
   execFileSync('git', ['clone', '-q', '--depth=1', `file://${source.repo}`, clone]);
-  assert.deepEqual(await analyzeRepository({ repo: clone }), [{ path: 'a.txt', commits: 1 }]);
+  assert.deepEqual(counts(await analyzeRepository({ repo: clone })), [{ path: 'a.txt', commits: 1 }]);
 });
 
 test('CLI exposes help/version and emits ordered JSON', async t => {
@@ -132,7 +143,22 @@ test('CLI exposes help/version and emits ordered JSON', async t => {
   const version = spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' });
   assert.equal(version.stdout.trim(), '1.0.0');
   const json = spawnSync(process.execPath, [cli, '--repo', f.repo, '--format', 'json'], { encoding: 'utf8' });
-  assert.equal(json.status, 0); assert.deepEqual(JSON.parse(json.stdout), [{ path: 'a.txt', commits: 1 }]);
+  assert.equal(json.status, 0);
+  const parsed = JSON.parse(json.stdout);
+  assert.deepEqual(counts(parsed), [{ path: 'a.txt', commits: 1 }]);
+  assert.equal(parsed[0].details[0].message, 'one');
+});
+
+test('CLI colors text only when requested and never colors JSON', async t => {
+  const f = fixture(t);
+  f.write('a.txt', 'one'); f.commit('one', '2024-01-01T00:00:00Z');
+  const cli = path.join(__dirname, '..', 'cli.js');
+  const colored = spawnSync(process.execPath, [cli, '-r', f.repo, '--color'], { encoding: 'utf8' });
+  assert.equal(colored.status, 0); assert.match(colored.stdout, /\u001b\[36m/); assert.match(colored.stdout, / one\n/);
+  const plain = spawnSync(process.execPath, [cli, '-r', f.repo, '--no-color'], { encoding: 'utf8' });
+  assert.equal(plain.status, 0); assert.doesNotMatch(plain.stdout, /\u001b\[/);
+  const json = spawnSync(process.execPath, [cli, '-r', f.repo, '--format', 'json', '--color'], { encoding: 'utf8' });
+  assert.equal(json.status, 0); assert.doesNotMatch(json.stdout, /\u001b\[/); assert.doesNotThrow(() => JSON.parse(json.stdout));
 });
 
 test('CLI refuses collisions unless force is supplied', async t => {

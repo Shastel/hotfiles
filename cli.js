@@ -18,6 +18,8 @@ Options:
       --since <date>             Include commits on or after date
   -t, --till <date>              Deprecated alias for --since
       --format <text|json>       Output format (default: text)
+      --color                    Force colors in text output
+      --no-color                 Disable colors
   -o, --output <file>            Write output atomically to a file
   -j, --json <file>              Shorthand for --format json --output <file>
       --force                    Replace an existing output file
@@ -39,6 +41,8 @@ function parse(argv) {
     if (flag === '--help' || flag === '-h') result.help = true;
     else if (flag === '--version' || flag === '-v') result.version = true;
     else if (flag === '--force') result.force = true;
+    else if (flag === '--color') result.color = true;
+    else if (flag === '--no-color') result.color = false;
     else if (valueFlags.has(flag)) {
       const key = valueFlags.get(flag);
       const value = inline === undefined ? argv[++i] : inline;
@@ -80,9 +84,17 @@ async function main(argv = process.argv.slice(2)) {
   if (args.version) { process.stdout.write(`${pkg.version}\n`); return; }
   if (args.till) process.stderr.write('Warning: --till is deprecated; use --since instead.\n');
   const results = await analyzeRepository(args);
-  const content = args.format === 'json'
-    ? `${JSON.stringify(results, null, 2)}\n`
-    : results.map(item => `${item.path} => ${item.commits}`).join('\n') + (results.length ? '\n' : '');
+  const useColor = args.format === 'text' && !args.output && (args.color === true || (args.color === undefined && process.stdout.isTTY));
+  const paint = (code, value) => useColor ? `\u001b[${code}m${value}\u001b[0m` : value;
+  const text = results.flatMap(item => {
+    const lines = [`${paint('36', item.path)} => ${paint('33', String(item.commits))}`];
+    for (const detail of item.details) {
+      const subject = detail.message.split(/\r?\n/, 1)[0];
+      lines.push(`  ${paint('90', detail.hash.slice(0, 12))} ${detail.date} ${subject}`);
+    }
+    return lines;
+  }).join('\n');
+  const content = args.format === 'json' ? `${JSON.stringify(results, null, 2)}\n` : text + (results.length ? '\n' : '');
   if (args.output) await writeAtomic(args.output, content, args.force);
   else process.stdout.write(content);
 }

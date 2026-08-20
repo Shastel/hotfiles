@@ -8,7 +8,8 @@ export interface AnalyzeOptions {
   ignoreExtensions?: string[];
 }
 
-export interface HotFile { path: string; commits: number }
+export interface CommitDetail { hash: string; date: string; message: string }
+export interface HotFile { path: string; commits: number; details: CommitDetail[] }
 
 export class HotfilesError extends Error { code: string }
 export function analyzeRepository(options: AnalyzeOptions): Promise<HotFile[]>;
