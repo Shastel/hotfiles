@@ -45,5 +45,5 @@ jobs:
           package=$(npm pack --silent)
           test_dir=$(mktemp -d)
           npm install --prefix "$test_dir" "$PWD/$package"
-          node -e "const api=require('$test_dir/node_modules/hotfiles'); if(typeof api.analyzeRepository!=='function') process.exit(1)"
-          "$test_dir/node_modules/.bin/hotfiles" --version
+          node -e "const api=require(process.argv[1]); if(typeof api.analyzeRepository!=='function') process.exit(1)" "$test_dir/node_modules/hotfiles"
+          node "$test_dir/node_modules/hotfiles/cli.js" --version
