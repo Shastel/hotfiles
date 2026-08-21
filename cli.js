@@ -78,13 +78,17 @@ async function writeAtomic(destination, content, force) {
   }
 }
 
+function shouldUseColor(args, stream = process.stdout) {
+  return args.format === 'text' && !args.output && (args.color === true || (args.color === undefined && stream.isTTY === true));
+}
+
 async function main(argv = process.argv.slice(2)) {
   const args = parse(argv);
   if (args.help) { process.stdout.write(`${HELP}\n`); return; }
   if (args.version) { process.stdout.write(`${pkg.version}\n`); return; }
   if (args.till) process.stderr.write('Warning: --till is deprecated; use --since instead.\n');
   const results = await analyzeRepository(args);
-  const useColor = args.format === 'text' && !args.output && (args.color === true || (args.color === undefined && process.stdout.isTTY));
+  const useColor = shouldUseColor(args);
   const paint = (code, value) => useColor ? `\u001b[${code}m${value}\u001b[0m` : value;
   const text = results.flatMap(item => {
     const lines = [`${paint('36', item.path)} => ${paint('33', String(item.commits))}`];
@@ -104,4 +108,4 @@ if (require.main === module) main().catch(error => {
   process.exitCode = 1;
 });
 
-module.exports = { main, parse };
+module.exports = { main, parse, shouldUseColor };

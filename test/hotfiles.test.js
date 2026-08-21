@@ -9,6 +9,7 @@ const path = require('node:path');
 const test = require('node:test');
 const { analyzeRepository } = require('..');
 const { _internals } = require('../lib');
+const { parse: parseCli, shouldUseColor } = require('../cli');
 
 function git(repo, ...args) {
   return execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
@@ -70,6 +71,9 @@ test('follows rename chains, excludes deleted files, and treats copies independe
   assert.deepEqual(counts(await analyzeRepository({ repo: f.repo })), [
     { path: 'current.txt', commits: 3 }, { path: 'copy.txt', commits: 2 }
   ]);
+  const results = await analyzeRepository({ repo: f.repo });
+  assert.deepEqual(results.find(item => item.path === 'current.txt').details.map(detail => detail.message), ['rename two', 'rename one', 'old']);
+  assert.deepEqual(results.find(item => item.path === 'copy.txt').details.map(detail => detail.message), ['change copy', 'copy']);
 });
 
 test('rejects invalid input with stable codes', async () => {
@@ -97,6 +101,25 @@ test('walks all branches reachable from HEAD while excluding merge commits', asy
   });
   assert.deepEqual(counts(await analyzeRepository({ repo: f.repo })), [
     { path: 'a.txt', commits: 2 }, { path: 'b.txt', commits: 2 }
+  ]);
+  const details = (await analyzeRepository({ repo: f.repo })).flatMap(item => item.details);
+  assert.equal(details.some(detail => detail.message === 'merge'), false);
+});
+
+test('preserves multiline Unicode messages and deterministic detail order', async t => {
+  const f = fixture(t);
+  f.write('a.txt', 'one');
+  git(f.repo, 'add', '-A');
+  execFileSync('git', ['-C', f.repo, 'commit', '-q', '-m', 'fix: café 🚀', '-m', 'Body line\n第二行'], {
+    env: { ...process.env, GIT_AUTHOR_DATE: '2024-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2024-01-01T00:00:00Z' }
+  });
+  f.write('a.txt', 'two'); f.commit('same timestamp', '2024-01-01T00:00:00Z');
+  const first = await analyzeRepository({ repo: f.repo });
+  const second = await analyzeRepository({ repo: f.repo });
+  assert.deepEqual(first, second);
+  assert.equal(first[0].details[1].message, 'fix: café 🚀\n\nBody line\n第二行');
+  assert.deepEqual(first[0].details.map(detail => detail.date), [
+    '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z'
   ]);
 });
 
@@ -159,6 +182,38 @@ test('CLI colors text only when requested and never colors JSON', async t => {
   assert.equal(plain.status, 0); assert.doesNotMatch(plain.stdout, /\u001b\[/);
   const json = spawnSync(process.execPath, [cli, '-r', f.repo, '--format', 'json', '--color'], { encoding: 'utf8' });
   assert.equal(json.status, 0); assert.doesNotMatch(json.stdout, /\u001b\[/); assert.doesNotThrow(() => JSON.parse(json.stdout));
+});
+
+test('CLI color policy handles TTY auto-detection, files, and repeated flags', () => {
+  assert.equal(shouldUseColor({ format: 'text' }, { isTTY: true }), true);
+  assert.equal(shouldUseColor({ format: 'text' }, { isTTY: false }), false);
+  assert.equal(shouldUseColor({ format: 'json', color: true }, { isTTY: true }), false);
+  assert.equal(shouldUseColor({ format: 'text', output: 'report.txt', color: true }, { isTTY: true }), false);
+  assert.equal(parseCli(['--color', '--no-color']).color, false);
+  assert.equal(parseCli(['--no-color', '--color']).color, true);
+});
+
+test('forced color never contaminates file output', async t => {
+  const f = fixture(t);
+  f.write('a.txt', 'one'); f.commit('one', '2024-01-01T00:00:00Z');
+  const output = path.join(f.repo, 'report.txt');
+  const cli = path.join(__dirname, '..', 'cli.js');
+  const result = spawnSync(process.execPath, [cli, '-r', f.repo, '--color', '--output', output], { encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.doesNotMatch(fs.readFileSync(output, 'utf8'), /\u001b\[/);
+});
+
+test('detailed history completes under a constrained heap', async t => {
+  const f = fixture(t);
+  for (let index = 0; index < 30; index += 1) {
+    f.write('history.txt', String(index));
+    f.commit(`history ${index}`, new Date(Date.UTC(2020, 0, 1, 0, index)).toISOString());
+  }
+  const script = "require('.').analyzeRepository({repo:process.argv[1]}).then(r=>{if(r[0].details.length!==30)process.exit(2)})";
+  const result = spawnSync(process.execPath, ['--max-old-space-size=32', '-e', script, f.repo], {
+    cwd: path.join(__dirname, '..'), encoding: 'utf8', timeout: 30000
+  });
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test('CLI refuses collisions unless force is supplied', async t => {

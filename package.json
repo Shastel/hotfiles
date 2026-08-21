@@ -11,17 +11,38 @@
       "default": "./index.js"
     }
   },
-  "bin": { "hotfiles": "cli.js" },
-  "files": ["index.js", "index.d.ts", "cli.js", "lib/index.js", "README.md", "LICENSE", "SECURITY.md"],
+  "bin": {
+    "hotfiles": "cli.js"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "cli.js",
+    "lib/index.js",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
+  ],
   "scripts": {
     "lint": "node --check index.js && node --check cli.js && node --check lib/index.js",
-    "test": "node --test",
+    "test": "node --test && npm run test:types",
+    "test:types": "tsc -p tsconfig.types.json",
     "check:package": "npm pack --dry-run"
   },
-  "engines": { "node": ">=22" },
-  "repository": { "type": "git", "url": "git+https://github.com/Shastel/hotfiles.git" },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shastel/hotfiles.git"
+  },
   "author": "max@shas.tel",
   "license": "MIT",
-  "bugs": { "url": "https://github.com/Shastel/hotfiles/issues" },
-  "homepage": "https://github.com/Shastel/hotfiles#readme"
+  "bugs": {
+    "url": "https://github.com/Shastel/hotfiles/issues"
+  },
+  "homepage": "https://github.com/Shastel/hotfiles#readme",
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
 }

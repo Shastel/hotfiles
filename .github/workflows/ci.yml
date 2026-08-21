@@ -47,3 +47,29 @@ jobs:
           npm install --prefix "$test_dir" "$PWD/$package"
           node -e "const api=require(process.argv[1]); if(typeof api.analyzeRepository!=='function') process.exit(1)" "$test_dir/node_modules/hotfiles"
           node "$test_dir/node_modules/hotfiles/cli.js" --version
+          mkdir "$test_dir/repo"
+          git -C "$test_dir/repo" init -q -b main
+          git -C "$test_dir/repo" config user.name "Hotfiles CI"
+          git -C "$test_dir/repo" config user.email "ci@example.invalid"
+          echo smoke > "$test_dir/repo/smoke.txt"
+          git -C "$test_dir/repo" add smoke.txt
+          git -C "$test_dir/repo" commit -q -m "packed smoke"
+          node "$test_dir/node_modules/hotfiles/cli.js" --repo "$test_dir/repo" --format json > "$test_dir/result.json"
+          node -e "const r=require(process.argv[1]); if(r[0].path!=='smoke.txt'||r[0].details[0].message!=='packed smoke') process.exit(1)" "$test_dir/result.json"
+      - name: Native Windows CLI analysis
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $package = npm pack --silent
+          $testDir = Join-Path $env:RUNNER_TEMP "hotfiles-native"
+          npm install --prefix $testDir (Join-Path $PWD $package)
+          $repo = Join-Path $testDir "repo"
+          New-Item -ItemType Directory -Path $repo | Out-Null
+          git -C $repo init -q -b main
+          git -C $repo config user.name "Hotfiles CI"
+          git -C $repo config user.email "ci@example.invalid"
+          Set-Content -Path (Join-Path $repo "native.txt") -Value "smoke"
+          git -C $repo add native.txt
+          git -C $repo commit -q -m "native Windows smoke"
+          $result = node (Join-Path $testDir "node_modules/hotfiles/cli.js") --repo $repo --format json | ConvertFrom-Json
+          if ($result[0].path -ne "native.txt" -or $result[0].details[0].message -ne "native Windows smoke") { exit 1 }
