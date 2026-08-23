@@ -25,7 +25,7 @@
   ],
   "scripts": {
     "lint": "node --check index.js && node --check cli.js && node --check lib/index.js",
-    "test": "node --test && npm run test:types",
+    "test": "node --test test/*.test.js && npm run test:types",
     "test:types": "tsc -p tsconfig.types.json",
     "check:package": "npm pack --dry-run"
   },
