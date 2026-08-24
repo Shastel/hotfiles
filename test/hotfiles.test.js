@@ -162,7 +162,7 @@ test('CLI exposes help/version and emits ordered JSON', async t => {
   f.write('a.txt', 'one'); f.commit('one', '2024-01-01T00:00:00Z');
   const cli = path.join(__dirname, '..', 'cli.js');
   const help = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
-  assert.equal(help.status, 0); assert.match(help.stdout, /--since/);
+  assert.equal(help.status, 0); assert.match(help.stdout, /--since/); assert.match(help.stdout, /Examples:/); assert.match(help.stdout, /github\.com\/Shastel\/hotfiles/);
   const version = spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' });
   assert.equal(version.stdout.trim(), '1.0.0');
   const json = spawnSync(process.execPath, [cli, '--repo', f.repo, '--format', 'json'], { encoding: 'utf8' });
@@ -170,6 +170,16 @@ test('CLI exposes help/version and emits ordered JSON', async t => {
   const parsed = JSON.parse(json.stdout);
   assert.deepEqual(counts(parsed), [{ path: 'a.txt', commits: 1 }]);
   assert.equal(parsed[0].details[0].message, 'one');
+});
+
+test('CLI shows concise usage when the required repository is missing', () => {
+  const cli = path.join(__dirname, '..', 'cli.js');
+  const result = spawnSync(process.execPath, [cli], { encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /^hotfiles: --repo is required/);
+  assert.match(result.stderr, /Usage: hotfiles --repo <path> \[options\]/);
+  assert.match(result.stderr, /hotfiles --help/);
 });
 
 test('CLI colors text only when requested and never colors JSON', async t => {

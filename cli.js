@@ -24,7 +24,14 @@ Options:
   -j, --json <file>              Shorthand for --format json --output <file>
       --force                    Replace an existing output file
   -h, --help                     Show help
-  -v, --version                  Show version`;
+  -v, --version                  Show version
+
+Examples:
+  hotfiles --repo ./my-project
+  hotfiles -r ./my-project --path src --limit 100 --ext js --ext ts
+  hotfiles -r ./my-project --since 2026-01-01 --format json
+
+Documentation: https://github.com/Shastel/hotfiles#readme`;
 
 function parse(argv) {
   const valueFlags = new Map([
@@ -86,6 +93,7 @@ async function main(argv = process.argv.slice(2)) {
   const args = parse(argv);
   if (args.help) { process.stdout.write(`${HELP}\n`); return; }
   if (args.version) { process.stdout.write(`${pkg.version}\n`); return; }
+  if (!args.repo) throw new Error('--repo is required\n\nUsage: hotfiles --repo <path> [options]\nRun "hotfiles --help" for examples and all options.');
   if (args.till) process.stderr.write('Warning: --till is deprecated; use --since instead.\n');
   const results = await analyzeRepository(args);
   const useColor = shouldUseColor(args);
