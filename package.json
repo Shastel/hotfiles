@@ -1,6 +1,6 @@
 {
   "name": "hotfiles",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Find frequently changed files in Git history",
   "main": "index.js",
   "types": "index.d.ts",

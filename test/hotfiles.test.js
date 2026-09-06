@@ -76,6 +76,23 @@ test('follows rename chains, excludes deleted files, and treats copies independe
   assert.deepEqual(results.find(item => item.path === 'copy.txt').details.map(detail => detail.message), ['change copy', 'copy']);
 });
 
+test('follows filtered-out renames without counting them toward results or limits', async t => {
+  const f = fixture(t);
+  f.write('old.js', 'one'); f.commit('fix: initial implementation', '2024-01-01T00:00:00Z');
+  git(f.repo, 'mv', 'old.js', 'middle.js'); f.commit('refactor: rename one', '2024-01-02T00:00:00Z');
+  f.write('middle.js', 'two'); f.commit('fix: update', '2024-01-03T00:00:00Z');
+  git(f.repo, 'mv', 'middle.js', 'new.js'); f.commit('refactor: rename two', '2024-01-04T00:00:00Z');
+
+  const options = { repo: f.repo, message: '^fix:', path: 'new.js', extensions: ['js'] };
+  const results = await analyzeRepository(options);
+  assert.deepEqual(counts(results), [{ path: 'new.js', commits: 2 }]);
+  assert.deepEqual(results[0].details.map(detail => detail.message), ['fix: update', 'fix: initial implementation']);
+
+  const limited = await analyzeRepository({ ...options, limit: 1 });
+  assert.deepEqual(counts(limited), [{ path: 'new.js', commits: 1 }]);
+  assert.deepEqual(limited[0].details.map(detail => detail.message), ['fix: update']);
+});
+
 test('rejects invalid input with stable codes', async () => {
   await assert.rejects(analyzeRepository({}), { code: 'ERR_HOTFILES_INVALID_OPTIONS' });
   await assert.rejects(analyzeRepository({ repo: os.tmpdir() }), { code: 'ERR_HOTFILES_INVALID_REPOSITORY' });
@@ -164,7 +181,7 @@ test('CLI exposes help/version and emits ordered JSON', async t => {
   const help = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
   assert.equal(help.status, 0); assert.match(help.stdout, /--since/); assert.match(help.stdout, /Examples:/); assert.match(help.stdout, /github\.com\/Shastel\/hotfiles/);
   const version = spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' });
-  assert.equal(version.stdout.trim(), '1.0.0');
+  assert.equal(version.stdout.trim(), require('../package.json').version);
   const json = spawnSync(process.execPath, [cli, '--repo', f.repo, '--format', 'json'], { encoding: 'utf8' });
   assert.equal(json.status, 0);
   const parsed = JSON.parse(json.stdout);
